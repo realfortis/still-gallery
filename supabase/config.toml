@@ -1,0 +1,8 @@
+project_id = "still-gallery"
+
+[auth]
+site_url = "https://realfortis.github.io/still-gallery/"
+enable_signup = false
+
+[db.seed]
+enabled = false

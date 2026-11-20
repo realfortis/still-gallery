@@ -1,19 +1,30 @@
 import { catalogContent, detailContent } from './catalog-view.js';
 import { catalogData, pagesLinks } from './catalog.js';
-import { backendOrigin } from './config.js';
+import { backendOrigin, supabase } from './config.js';
 import { exampleWorks } from './examples.js';
 
 const main = document.querySelector('main');
 const links = pagesLinks(backendOrigin);
 const clearFilters = './#collection';
 const params = new URLSearchParams(window.location.search);
+const live = Boolean(backendOrigin || supabase);
 const detailPage = window.location.pathname.endsWith('/artwork.html');
 
 async function loadGallery() {
   let works;
+  let galleryLinks = links;
   let error = '';
   try {
-    if (backendOrigin) {
+    if (supabase) {
+      const [{ galleryClient }, { readGallery, artworkImages }] = await Promise.all([
+        import('./supabase-client.js'), import('./gallery-store.js')
+      ]);
+      const client = galleryClient(supabase);
+      const id = params.get('id');
+      works = detailPage && !/^[1-9][0-9]{0,9}$/.test(id || '') ? []
+        : await readGallery(client, { id: detailPage ? id : null });
+      galleryLinks = { ...links, image: await artworkImages(client, works, supabase.url) };
+    } else if (backendOrigin) {
       const response = await fetch(`${backendOrigin}/api/artworks`, {
         cache: 'no-store', credentials: 'omit', signal: AbortSignal.timeout(10_000)
       });
@@ -31,7 +42,7 @@ async function loadGallery() {
   if (detailPage) {
     const work = works.find(({ id }) => String(id) === params.get('id'));
     if (work) {
-      main.innerHTML = detailContent(work, { links, clearFilters });
+      main.innerHTML = detailContent(work, { links: galleryLinks, clearFilters });
       document.title = `${work.title} · Sill Gallery`;
     } else {
       const status = document.createElement('p');
@@ -47,8 +58,8 @@ async function loadGallery() {
       main.replaceChildren(section);
       document.title = 'Artwork · Sill Gallery';
     }
-  } else if (backendOrigin || window.location.search) {
-    main.innerHTML = catalogContent({ ...catalogData(works, params), links, clearFilters, message: error });
+  } else if (live || window.location.search) {
+    main.innerHTML = catalogContent({ ...catalogData(works, params), links: galleryLinks, clearFilters, message: error });
     if (window.location.hash === '#collection' || window.location.hash === '#visit') {
       document.getElementById(window.location.hash.slice(1)).scrollIntoView();
     }
@@ -57,5 +68,5 @@ async function loadGallery() {
 
 loadGallery();
 window.addEventListener('pageshow', (event) => {
-  if (event.persisted && backendOrigin) loadGallery();
+  if (event.persisted && live) loadGallery();
 });

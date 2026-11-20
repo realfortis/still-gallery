@@ -5,3 +5,5 @@ node_modules/
 .DS_Store
 *.sqlite
 *.sqlite-*
+supabase/.temp/
+supabase/.branches/

@@ -1,55 +1,45 @@
 # Sill Gallery
 
-A starter website for a fictional contemporary art gallery. Visitors can browse, search, filter by medium, and open artwork detail pages. Staff can manage images, edit details, save private drafts, publish or unpublish work, select a homepage feature, and delete records.
+A fictional contemporary art gallery with a public collection and a staff portal. Visitors can search by title or artist and filter by medium. Staff can add artwork, upload and replace images, save private drafts, publish or unpublish work, select one homepage feature, and delete records.
 
-## Run locally
+## Live site
+
+- [Public gallery](https://realfortis.github.io/still-gallery/)
+- [Staff portal](https://realfortis.github.io/still-gallery/admin.html)
+
+GitHub Pages hosts the website from the `main` branch's `/docs` folder. Supabase stores artwork details, images, and staff sign-in. When staff publish a change, visitors see it on their next page load. The starter images are included in Git. New uploads go to private Supabase Storage and receive time-limited image links when a viewer is allowed to see them.
+
+## Give someone staff access
+
+1. In [Supabase Authentication → Users](https://supabase.com/dashboard/project/yexecawftuosunjnolvp/auth/users), choose **Add user → Create new user**. Enter the staff member's email and a password, and select **Auto Confirm User** if shown.
+2. Copy the new user's **UID**. Open the [SQL Editor](https://supabase.com/dashboard/project/yexecawftuosunjnolvp/sql/new), paste the following statement, replace the placeholder with that UID, and click **Run**.
+
+   ```sql
+   insert into public.gallery_staff (user_id)
+   values ('PASTE-YOUR-UID-HERE')
+   on conflict do nothing;
+   ```
+
+3. Have the staff member sign in on the [staff portal](https://realfortis.github.io/still-gallery/admin.html). A Supabase Auth account requires a matching entry in `gallery_staff` to manage artwork.
+
+## Supabase setup for a fresh project
+
+Apply [the gallery migration](supabase/migrations/20261120163000_gallery.sql) using the SQL Editor or the Supabase CLI. Use one method for the initial installation. If you applied it in the SQL Editor and later switch to the CLI, reconcile its migration history before running `db push`.
+
+Set the project URL and **publishable key** in `pages/config.json`. Keep the Supabase secret key, service-role key, and database password out of Git.
+
+## Edit website code
 
 With Node.js 22.13 or newer:
 
 ```sh
-npm run seed
-npm run admin -- you@example.com
-npm start
+npm ci
+npm run pages:build
+npm test
 ```
 
-Open the [local gallery](http://127.0.0.1:3000/) or [staff portal](http://127.0.0.1:3000/admin). The seed command adds the example collection once. The admin command asks for a password of at least 14 characters. Rerun it with the same email to change the password and revoke existing sessions, or use another email to add a staff account.
+Commit the regenerated `docs/` folder with the source changes. GitHub Pages deploys it from `main`. Changes made in the staff portal go directly to Supabase.
 
-No third-party packages are required. The built-in SQLite module may print an experimental-feature warning on Node 22. Run `npm test` to verify staff access, draft privacy, publishing, unpublishing, image replacement, persistence, and live catalog access.
+The original local Node and SQLite starter is still available. Run `npm run seed`, `npm run admin -- you@example.com`, and `npm start` to use it at [http://127.0.0.1:3000/](http://127.0.0.1:3000/). Its SQLite data is separate from the live gallery.
 
-## Publish the static gallery on GitHub Pages
-
-In [repository Pages settings](https://github.com/realfortis/still-gallery/settings/pages), choose **Deploy from a branch**, select **main** and **/docs**, then save. The expected address is [realfortis.github.io/still-gallery](https://realfortis.github.io/still-gallery/). Until the backend is connected, Pages displays the included sample collection.
-
-## Deploy the staff portal and catalog
-
-The included [Render Blueprint](render.yaml) provisions a Node web service and a 1 GB persistent disk. Render requires paid compute for persistent disks. A paid service is needed only if you choose this hosting option. [Render disk documentation](https://render.com/docs/disks)
-
-1. In Render, create a Blueprint from this GitHub repository and supply `PAGES_ORIGIN=https://realfortis.github.io`. Confirm the service and disk pricing in Render before deploying. The origin is the scheme and hostname, without the repository name.
-2. When the service is live, use its Render Shell to run `npm run admin -- you@example.com` and enter your own password at the prompt. The first startup seeds the example collection on the persistent disk. Staff sign in at the backend URL followed by `/admin`.
-3. Configure the Pages frontend with the deployed backend URL and publish the updated `pages/config.json` and `docs/` files:
-
-   ```sh
-   npm run pages:build -- --backend https://YOUR-SERVICE.onrender.com
-   git add pages/config.json docs
-   git commit -m "Connect GitHub Pages to the gallery backend"
-   git push
-   ```
-
-The Pages frontend fetches the public catalog from `GET /api/artworks`, then loads artwork images from the backend. The backend sends the CORS header for the configured Pages origin. Staff forms and session cookies stay on the backend origin. Only published artwork is available through the catalog and public image routes. Adding, editing, or unpublishing a work takes effect on the next page load.
-
-## Use an existing Node host
-
-Run `npm run seed` and `npm start` with a persistent writable data directory, behind an HTTPS proxy. Use one app instance for SQLite.
-
-| Variable | Example | Purpose |
-| --- | --- | --- |
-| `NODE_ENV` | `production` | Requires an HTTPS origin for staff sessions. |
-| `PUBLIC_ORIGIN` | `https://gallery-api.example.com` | Backend's public HTTPS origin. Render supplies its own default. |
-| `PAGES_ORIGIN` | `https://realfortis.github.io` | Origin allowed to read the catalog in a browser. |
-| `DATA_DIR` | `/var/lib/sill-gallery` | Persistent directory for SQLite and its journal. |
-| `HOST` | `0.0.0.0` | Service's listening address. Local default is `127.0.0.1`. |
-| `PORT` | `3000` | Backend port behind the proxy. |
-
-Use the same `DATA_DIR` for the admin provisioning command. Back up the database with a SQLite-aware backup or an appropriate volume snapshot. Git tracks source code and sample artwork. Staff accounts, uploads, and sessions live in the runtime database.
-
-The three sample artworks were created with ImageGen. See the [image prompts](artwork/PROMPTS.md) for details.
+The three sample artworks were created with ImageGen. See the [image prompts](artwork/PROMPTS.md).

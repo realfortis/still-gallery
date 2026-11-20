@@ -24,7 +24,7 @@ GitHub Pages hosts the website from the `main` branch's `/docs` folder. Supabase
 
 ## Supabase setup for a fresh project
 
-Apply [the gallery migration](supabase/migrations/20261120163000_gallery.sql) using the SQL Editor or the Supabase CLI. Use one method for the initial installation. If you applied it in the SQL Editor and later switch to the CLI, reconcile its migration history before running `db push`.
+Apply [the gallery migration](supabase/migrations/20261120163000_gallery.sql) using the SQL Editor or the Supabase CLI. The migration recognizes the completed initial setup if it was first applied in the SQL Editor.
 
 Set the project URL and **publishable key** in `pages/config.json`. Keep the Supabase secret key, service-role key, and database password out of Git.
 

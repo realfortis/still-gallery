@@ -1,0 +1,69 @@
+:root {
+  color: #3d3d3d;
+  background: #ddd9d2;
+  font-family: "jaf-bernino-sans", Arial, sans-serif;
+  font-synthesis: none;
+}
+* { box-sizing: border-box; }
+body { margin: 0; }
+a { color: #805d25; text-underline-offset: .2em; }
+a:hover { text-decoration: underline; }
+a:focus-visible, button:focus-visible { outline: 3px solid #c49037; outline-offset: 3px; }
+#gallery-background { position: fixed; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: top left; z-index: -1; }
+#gallery-background:not([src]) { display: none; }
+.masthead { background: #666; color: #fff; text-align: center; min-height: 240px; }
+.masthead-in, .layout, footer { width: min(900px, 100%); margin-inline: auto; }
+.address { margin: 0; color: #ccc; font: 400 .6875rem/1.5 "azo-sans-web", Arial, sans-serif; text-transform: uppercase; letter-spacing: .16em; padding: .55rem 1rem; }
+.masthead::after { content: ""; position: absolute; inset: 36px 0 auto; border-top: 1px solid #ccc; pointer-events: none; }
+.brand { color: #fff; display: block; padding: 3.5rem .4rem 0; font: 400 clamp(1.6rem, 5.5vw, 3.4375rem)/1.15 "trajan-sans-pro", Arial, sans-serif; letter-spacing: .135em; text-decoration: none; text-transform: uppercase; }
+.menu { display: flex; justify-content: center; align-items: center; flex-wrap: wrap; gap: .65rem; padding: .1rem .75rem 2rem; font: 400 .75rem/1.4 "azo-sans-web", Arial, sans-serif; text-transform: uppercase; letter-spacing: .34em; }
+.menu a, .artists a { color: #eee; text-decoration: none; }
+.menu a:hover, .artists a:hover { color: white; text-decoration: underline; }
+.menu a[aria-current], .artists a[aria-current] { color: #fff; font-weight: bold; }
+.layout { display: grid; grid-template-columns: 195px minmax(0, 1fr); gap: 10px; align-items: start; margin-top: 10px; }
+.artists { background: #c49a36; padding: 1.25rem .6rem 2rem; text-align: center; }
+.artists details { display: contents; }
+.artists summary { display: none; }
+.artists a { display: block; font: 400 .75rem/1.45 "azo-sans-web", Arial, sans-serif; text-transform: uppercase; margin-block: .8rem; overflow-wrap: anywhere; }
+.artists img { display: block; width: min(100%, 150px); margin: 0 auto 2.2rem; }
+.content { background: rgb(255 255 255 / .6); min-height: 460px; padding: 1.9rem 35px 2rem; overflow-wrap: anywhere; }
+.content img { height: auto; max-width: 100%; vertical-align: middle; }
+.content p { font-size: .875rem; line-height: 1.48; white-space: pre-line; }
+.content h1, .content h2, .content h3 { color: #515151; text-transform: uppercase; letter-spacing: .15em; font-family: "trajan-sans-pro", Arial, sans-serif; font-weight: 400; }
+.content h1 { font-size: 2rem; margin-top: 0; margin-bottom: 1rem; }
+.content h2 { font-size: 1.55rem; }
+.content h3 { font-size: 1.12rem; line-height: 1.65; letter-spacing: .18em; }
+.content a:has(h3) { text-decoration: none; }
+.content table { width: 100%; max-width: 100%; border-spacing: .35rem; table-layout: fixed; }
+.content td { text-align: center; vertical-align: top; }
+.content td p { margin: .4rem 0 .9rem; }
+.images > a[data-work] { display: inline-block; margin: .22rem; }
+.images > a[data-work] img, .images td a[data-work] img {
+  width: min(200px, 100%); height: auto; aspect-ratio: 1; padding: 5px; object-fit: contain;
+}
+.new-artwork { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(145px,100%), 1fr)); gap: .7rem; margin-block: 1.25rem; }
+.new-artwork p { text-align: center; }
+.image-missing { display: inline-block; padding: .5rem; border: 1px solid #ddd; }
+footer { padding: .65rem 1rem; text-align: right; background: #666; }
+footer a { color: #fff; font-size: .875rem; }
+.lightbox { max-width: min(980px, 94vw); max-height: 94vh; width: fit-content; padding: .7rem; border: 0; color: #232323; }
+.lightbox::backdrop { background: rgb(0 0 0 / .82); }
+.lightbox img { display: block; max-width: min(90vw, 900px); max-height: 71vh; width: auto; height: auto; margin-inline: auto; }
+.lightbox p { white-space: pre-line; margin: .6rem 0; }
+.lightbox nav { display: flex; flex-wrap: wrap; align-items: center; gap: .6rem; }
+.lightbox nav button:last-child { margin-left: auto; }
+[hidden] { display: none !important; }
+@media (max-width: 700px) {
+  .masthead { min-height: 0; }
+  .masthead::after { display: none; }
+  .brand { padding-top: .9rem; }
+  .menu { letter-spacing: .09em; gap: .4rem; padding-bottom: 1rem; }
+  .layout { display: block; }
+  .artists { text-align: left; }
+  .artists details { display: block; }
+  .artists summary { display: list-item; cursor: pointer; color: #fff; }
+  .artists img { display: none; }
+  .content { padding: 1rem; }
+  .content table, .content tbody, .content tr { display: block; }
+  .content tr { display: grid; gap: .35rem; grid-template-columns: repeat(auto-fit, minmax(min(32%, 13rem), 1fr)); }
+}

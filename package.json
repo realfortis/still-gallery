@@ -11,10 +11,13 @@
     "admin": "node src/admin.mjs",
     "pages:build": "node pages/build.mjs",
     "seed": "node src/seed.mjs",
-    "test": "node --test"
+    "test": "node --test",
+    "emma:build": "node pages/emma/build.mjs",
+    "emma:import": "node migration/emma/import.mjs"
   },
   "dependencies": {
-    "@supabase/supabase-js": "2.119.2"
+    "@supabase/supabase-js": "2.119.2",
+    "dompurify": "3.4.18"
   },
   "devDependencies": {
     "esbuild": "0.28.2"

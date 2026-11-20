@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Contemporary art · Sill Gallery</title>
+  <link rel="stylesheet" href="./site.css">
+  <script type="module" src="./gallery.js"></script>
+</head>
+<body>
+  <a class="skip" href="#main">Skip to content</a>
+  <header class="top"><div class="wrap top-inner">
+    <a class="brand" href="./" aria-label="Sill Gallery home"><span class="mark" aria-hidden="true"></span><span>Sill<span class="brand-gap">Gallery</span></span></a>
+    <nav aria-label="Main"><a href="./#collection">Collection</a><a href="./#visit">Visit</a></nav>
+  </div></header>
+  <main id="main" >
+    <section class="hero wrap">
+      <div class="hero-copy">
+        <p class="eyebrow"><span></span> Independent contemporary gallery</p>
+        <h1>Art at the<br>water’s edge.</h1>
+        <p>Paintings and objects shaped by coastal places, changing light, and the materials artists live with.</p>
+        <a class="button primary" href="#collection">Explore the collection</a>
+      </div>
+      <figure class="hero-figure">
+        <a href="./artwork.html?id=1" aria-label="View Salt Memory">
+          <img src="./artwork/salt-memory.jpg" alt="White surf crashes over dark slate under a blue-grey sky in a thickly painted seascape." fetchpriority="high">
+        </a>
+        <figcaption><span><i>Salt Memory</i> · Rowan Mercer</span><span>Featured work</span></figcaption>
+      </figure>
+    </section>
+    <section id="collection" class="collection"><div class="wrap">
+      <div class="collection-heading">
+        <div><p class="eyebrow"><span></span> The collection</p><h2>Works on view</h2></div>
+        <form class="filters" action="./#collection">
+          <label><span class="sr-only">Search artwork</span><input type="search" name="q" placeholder="Search title or artist" value="" maxlength="120"></label>
+          <label><span class="sr-only">Filter by medium</span><select name="medium">
+            <option value="">All media</option>
+            <option>Acrylic on canvas</option><option>Oil on canvas</option><option>Stoneware</option>
+          </select></label>
+          <button class="button secondary" type="submit">Apply</button>
+        </form>
+      </div>
+      <div class="art-grid">
+        <article class="art-card">
+          <a href="./artwork.html?id=1">
+            <img src="./artwork/salt-memory.jpg" alt="White surf crashes over dark slate under a blue-grey sky in a thickly painted seascape." loading="lazy">
+            <h3>Salt Memory</h3>
+          </a>
+          <p>Rowan Mercer <span class="muted">· Oil on canvas</span></p>
+        </article>
+        <article class="art-card">
+          <a href="./artwork.html?id=3">
+            <img src="./artwork/vessel-for-rain.jpg" alt="Dark hand-built stoneware with two flared openings on a muted grey-green backdrop." loading="lazy">
+            <h3>Vessel for Rain</h3>
+          </a>
+          <p>Mara Vale <span class="muted">· Stoneware</span></p>
+        </article>
+        <article class="art-card">
+          <a href="./artwork.html?id=2">
+            <img src="./artwork/between-headlands.jpg" alt="Layered rust, ochre and charcoal shapes suggest a coastal headland at dusk." loading="lazy">
+            <h3>Between Headlands</h3>
+          </a>
+          <p>Iona Bell <span class="muted">· Acrylic on canvas</span></p>
+        </article></div>
+    </div></section>
+    <section id="visit" class="visit wrap">
+      <div><p class="eyebrow"><span></span> Visit the gallery</p><h2>By the harbour</h2></div>
+      <div><p>Sill Gallery is a fictional independent gallery set in St. John’s, Newfoundland. The artists, artwork and visiting details are examples for this starter site.</p>
+      <p><strong>Example hours</strong><br>Thursday–Sunday, noon–5 p.m.</p></div>
+    </section></main>
+  <footer><div class="wrap footer-inner">
+    <span>Sill Gallery <span class="muted">· Fictional gallery demo</span></span>
+    <span class="muted">Staff portal awaiting setup</span>
+  </div></footer>
+</body>
+</html>

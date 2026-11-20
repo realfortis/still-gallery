@@ -1,0 +1,23 @@
+services:
+  - type: web
+    name: sill-gallery-backend
+    runtime: node
+    plan: starter
+    buildCommand: node --check src/server.mjs
+    startCommand: npm run seed && npm start
+    healthCheckPath: /healthz
+    disk:
+      name: gallery-data
+      mountPath: /var/data
+      sizeGB: 1
+    envVars:
+      - key: NODE_VERSION
+        value: '24'
+      - key: NODE_ENV
+        value: production
+      - key: HOST
+        value: 0.0.0.0
+      - key: DATA_DIR
+        value: /var/data
+      - key: PAGES_ORIGIN
+        sync: false

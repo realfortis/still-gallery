@@ -6,7 +6,7 @@ const dialog = document.querySelector('dialog');
 const params = new URLSearchParams(location.search);
 const currentPath = decodeURIComponent(location.pathname.split('/').pop() || 'index.html');
 const route = currentPath === 'entry.html' ? (params.get('page') || 'index.html') : currentPath;
-const source = EMMA_MODE === 'local' ? 'local' : params.has('preview') ? 'staff' : 'public';
+const source = params.has('preview') ? 'staff' : EMMA_MODE === 'local' ? 'local' : 'public';
 const legacyPaths = new Set(EMMA_LEGACY_PATHS);
 let lightboxGroup = [];
 let lightboxIndex = 0;

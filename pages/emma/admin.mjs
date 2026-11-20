@@ -181,12 +181,20 @@ async function start() {
     return;
   }
   if (view === 'settings') return showSettings();
+  if (EMMA_MODE === 'local' && view === 'import') {
+    app.innerHTML = `${editorLinks}<h1>Stage the captured catalog</h1>
+      <p>Upload the private review copy to the existing Supabase project as drafts. This can take a few minutes.</p>
+      <form data-action="import"><button class="button primary">Stage as drafts</button></form>
+      <p role="status" data-import-status></p>`;
+    return;
+  }
   if (!types.has(view)) {
     app.innerHTML = `<h1>Manage Emma Butler Gallery</h1><div class="toolbar">
       <a class="button primary" href="${action('artwork')}">Artwork</a>
       <a class="button secondary" href="${action('page')}">Artists and exhibitions</a>
       <a class="button secondary" href="${action('settings')}">Gallery details</a>
       <a class="button secondary" href="./index.html?preview">Preview drafts</a>
+      ${EMMA_MODE === 'local' ? `<a class="button secondary" href="${action('import')}">Stage captured catalog</a>` : ''}
       <form data-action="logout"><button class="button secondary">Sign out</button></form></div>`;
     return;
   }
@@ -295,6 +303,19 @@ app.addEventListener('submit', async (event) => {
     } else if (type === 'logout') {
       check(await client.auth.signOut({ scope: 'local' }));
       location.assign('./admin.html');
+    } else if (EMMA_MODE === 'local' && type === 'import') {
+      const { stageSnapshot } = await import('./staging.mjs');
+      const status = app.querySelector('[data-import-status]');
+      const manifest = await fetch('./preview.json', { cache: 'no-store' });
+      if (!manifest.ok) throw new Error('The private capture could not be opened.');
+      status.textContent = await stageSnapshot(client, await manifest.json(), {
+        async readImage(name) {
+          const response = await fetch('./media/' + encodeURIComponent(name));
+          if (!response.ok) throw new Error('An image is missing from the private capture.');
+          return response.blob();
+        },
+        notify(message) { status.textContent = message; }
+      });
     } else {
       if (type === 'artwork') await saveArtwork(form);
       if (type === 'page') await savePage(form);

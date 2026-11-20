@@ -1,6 +1,6 @@
 import { build } from 'esbuild';
-import { copyFile, mkdir, readFile, writeFile } from 'node:fs/promises';
-import { basename, join, resolve } from 'node:path';
+import { copyFile, mkdir, readFile, readdir, writeFile } from 'node:fs/promises';
+import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = fileURLToPath(new URL('../../', import.meta.url));
@@ -10,6 +10,9 @@ if (!['local', 'release'].includes(mode) || !manifestArg || !outputArg) {
 }
 const manifest = resolve(manifestArg);
 const output = resolve(outputArg);
+if (mode === 'local' && join(output, 'preview.json') !== manifest) {
+  throw new Error('Use the private snapshot directory as the local output so images resolve.');
+}
 const snapshot = JSON.parse(await readFile(manifest, 'utf8'));
 const { supabase } = JSON.parse(await readFile(join(root, 'pages/config.json'), 'utf8'));
 if (!supabase) throw new Error('The existing Supabase project must be configured.');
@@ -25,6 +28,9 @@ if (mode === 'release' && process.platform === 'darwin' &&
   throw new Error('Build the release on a case-sensitive Linux filesystem to preserve legacy URLs that differ only by case.');
 }
 await mkdir(output, { recursive: true });
+if (mode === 'release' && (await readdir(output)).length) {
+  throw new Error('Use an empty release directory so private files cannot be included.');
+}
 const policy = [
   "default-src 'none'", "script-src 'self'", "style-src 'self' https://use.typekit.net https://p.typekit.net",
   "font-src https://use.typekit.net", `img-src 'self' blob: ${supabase.url} https://p.typekit.net`,
@@ -86,7 +92,4 @@ await Promise.all([
     }
   })
 ]);
-if (mode === 'local' && basename(manifest) === 'preview.json' && join(output, 'preview.json') !== manifest) {
-  throw new Error('Use the private snapshot directory as the local output so images resolve.');
-}
 console.log(`Built ${paths.length} gallery routes and the staff portal in ${output}.`);

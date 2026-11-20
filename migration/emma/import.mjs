@@ -1,8 +1,9 @@
-import { readFile, stat } from 'node:fs/promises';
+import { readFile } from 'node:fs/promises';
 import { dirname, join, resolve } from 'node:path';
 import { createInterface } from 'node:readline/promises';
 import { Writable } from 'node:stream';
 import { createClient } from '@supabase/supabase-js';
+import { check, stageSnapshot } from '../../pages/emma/staging.mjs';
 
 const args = process.argv.slice(2);
 const approve = args[0] === '--approve-reviewed';
@@ -39,60 +40,6 @@ async function login() {
   } finally { hidden.close(); }
 }
 
-function check({ data, error }, message) {
-  if (error) throw new Error(`${message}: ${error.message}`);
-  return data;
-}
-
-async function chunks(values, run) {
-  for (let index = 0; index < values.length; index += 100) await run(values.slice(index, index + 100));
-}
-
-async function importSnapshot() {
-  const selected = snapshot.assets.filter((image) => image.detail && image.thumb && !image.error);
-  const available = new Set(selected.map((image) => image.id));
-  let bytes = 0;
-  for (const image of selected) {
-    const [detail, thumb] = [image.id + '.webp', image.id + '-thumb.webp'];
-    if (!/^[a-f0-9-]{36}$/.test(image.id) || image.detail !== detail || image.thumb !== thumb) {
-      throw new Error('Invalid image path in manifest.');
-    }
-    bytes += (await stat(join(dirname(path), 'media', detail))).size + (await stat(join(dirname(path), 'media', thumb))).size;
-  }
-
-  const previous = check(await client.from('emma_settings').select('published').maybeSingle(), 'Gallery tables are unavailable');
-  if (previous?.published) throw new Error('The client gallery is already public. Use the staff portal for further edits.');
-  console.log(`Importing ${selected.length} image pairs (${Math.round(bytes / 1e6)} MB), all as staff-only drafts.`);
-  const bucket = client.storage.from('emma-gallery');
-  for (let index = 0; index < selected.length; index += 4) {
-    const batch = selected.slice(index, index + 4);
-    await Promise.all(batch.map(async (image) => {
-      for (const name of [image.detail, image.thumb]) {
-        const bytes = await readFile(join(dirname(path), 'media', name));
-        const result = await bucket.upload(name, bytes, { contentType: 'image/webp', cacheControl: '60' });
-        if (result.error && !(result.error.statusCode === '409' || result.error.error === 'Duplicate')) {
-          check(result, `Could not upload ${name}`);
-        }
-      }
-    }));
-    check(await client.from('emma_assets').upsert(batch.map((image) => ({
-      id: image.id, detail: image.detail, thumbnail: image.thumb, site_media: image.kind === 'site', approved: false
-    })), { onConflict: 'id', ignoreDuplicates: true }), 'Could not register image batch');
-    if (!(index % 100)) console.log(`Uploaded ${Math.min(index + batch.length, selected.length)}/${selected.length} image pairs.`);
-  }
-
-  const works = snapshot.artworks.filter((work) => available.has(work.asset_id)).map(({ sources, ...work }) =>
-    ({ ...work, edited: false, published: false }));
-  await chunks(works, async (batch) => check(await client.from('emma_artworks')
-    .upsert(batch, { onConflict: 'id', ignoreDuplicates: true }), 'Could not stage artwork'));
-  await chunks(snapshot.pages, async (batch) => check(await client.from('emma_pages')
-    .upsert(batch.map((page) => ({ ...page, published: false })), { onConflict: 'route', ignoreDuplicates: true }), 'Could not stage pages'));
-  const settings = { ...snapshot.settings, published: false, id: true };
-  for (const key of ['logo', 'background']) if (!available.has(settings[key])) settings[key] = null;
-  check(await client.from('emma_settings').upsert(settings, { onConflict: 'id', ignoreDuplicates: true }),
-    'Could not stage gallery settings');
-  console.log(`Staged ${works.length} artwork records and ${snapshot.pages.length} pages for staff review.`);
-}
 
 try {
   await login();
@@ -106,7 +53,11 @@ try {
     }), 'Could not prepare the reviewed release');
     console.log('Approved records are ready. The gallery is still private until public availability is enabled.');
   } else {
-    await importSnapshot();
+    const result = await stageSnapshot(client, snapshot, {
+      readImage: (name) => readFile(join(dirname(path), 'media', name)),
+      notify: (message) => console.log(message)
+    });
+    console.log(result);
   }
 } catch (error) {
   console.error(error.message);

@@ -15,9 +15,9 @@ const textarea = (key, label, value = '') =>
   `<label>${e(label)}<textarea name="${key}" rows="6">${e(value ?? '')}</textarea></label>`;
 const input = (key, label, value = '', options = '') =>
   `<label>${e(label)}<input name="${key}" value="${e(value ?? '')}" ${options}></label>`;
-const visibility = (item, label = 'Published') =>
+const visibility = (item, label = 'Show on the public gallery') =>
   `<label class="check"><input type="checkbox" name="published" ${item?.published ? 'checked' : ''}> ${label}</label>`;
-const editorLinks = `<p><a href="./admin.html">Staff overview</a> · <a href="./index.html?preview">Preview gallery drafts</a></p>`;
+const editorLinks = `<p><a href="./admin.html">Back to staff dashboard</a> · <a href="./index.html?preview">Preview gallery drafts</a></p>`;
 let existing;
 let busy = false;
 
@@ -53,7 +53,8 @@ function listResults(data, type) {
       state.textContent = item.published ? 'Published' : 'Draft';
       const link = document.createElement('a');
       link.className = 'button secondary';
-      link.textContent = 'Edit';
+      link.textContent = type === 'artwork' ? 'Edit artwork' : 'Edit page';
+      link.setAttribute('aria-label', `${link.textContent} · ${item.title || 'Title pending'}`);
       link.href = editUrl(type, item.id || item.route);
       li.append(text, state, link);
       return li;
@@ -79,8 +80,9 @@ async function showList(type) {
 }
 
 function editor(title, fields, type) {
+  const saveLabel = { artwork: 'Save artwork', page: 'Save page', settings: 'Save gallery settings' }[type];
   app.innerHTML = `${editorLinks}<div class="admin-heading"><h1>${e(title)}</h1></div>
-    <form class="panel stack" data-action="${type}">${fields}<button class="button primary">Save</button></form>`;
+    <form class="panel stack" data-action="${type}">${fields}<button class="button primary">${saveLabel}</button></form>`;
 }
 
 function showArtwork() {
@@ -106,7 +108,7 @@ async function showPage() {
     ${textarea('body_text', 'Page text', item.body_text)}
     <section class="stack"><h2>Artwork order</h2><label>Find artwork<input type="search" data-work-search></label>
     <label>Choose a result<select data-work-options aria-label="Choose artwork"></select></label>
-    <button type="button" class="button secondary" data-add>Add to page</button>
+    <button type="button" class="button secondary" data-add>Add selected artwork to page</button>
     <ol data-order></ol></section>
     ${visibility(item)}`, 'page');
   const entries = (item.placements || []).map((entry) => ({ ...entry }));
@@ -182,20 +184,20 @@ async function start() {
   }
   if (view === 'settings') return showSettings();
   if (EMMA_MODE === 'local' && view === 'import') {
-    app.innerHTML = `${editorLinks}<h1>Stage the captured catalog</h1>
-      <p>Upload the private review copy to the existing Supabase project as drafts. This can take a few minutes.</p>
-      <form data-action="import"><button class="button primary">Stage as drafts</button></form>
+    app.innerHTML = `${editorLinks}<h1>Import website catalog as drafts</h1>
+      <p>Use this during initial setup to copy the artwork and pages captured from the old website
+      into the staff portal. The import can take a few minutes. It skips records and images already imported.</p>
+      <form data-action="import"><button class="button primary">Import catalog as private drafts</button></form>
       <p role="status" data-import-status></p>`;
     return;
   }
   if (!types.has(view)) {
     app.innerHTML = `<h1>Manage Emma Butler Gallery</h1><div class="toolbar">
-      <a class="button primary" href="${action('artwork')}">Artwork</a>
-      <a class="button secondary" href="${action('page')}">Artists and exhibitions</a>
-      <a class="button secondary" href="${action('settings')}">Gallery details</a>
-      <a class="button secondary" href="./index.html?preview">Preview drafts</a>
-      ${EMMA_MODE === 'local' ? `<a class="button secondary" href="${action('import')}">Stage captured catalog</a>` : ''}
-      <form data-action="logout"><button class="button secondary">Sign out</button></form></div>`;
+      <a class="button primary" href="${action('artwork')}">Manage artwork</a>
+      <a class="button secondary" href="${action('page')}">Manage artists, exhibitions and pages</a>
+      <a class="button secondary" href="${action('settings')}">Edit gallery settings and homepage</a>
+      <a class="button secondary" href="./index.html?preview">Preview gallery drafts</a>
+      <form data-action="logout"><button class="button secondary">Sign out of staff portal</button></form></div>`;
     return;
   }
   if (!key) return showList(view);

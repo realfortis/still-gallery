@@ -84,7 +84,7 @@ const visitor = `${head('Emma Butler Gallery', 'emma.css?v=' + cssRevision, 'emm
 <aside class="artists"><img alt="Emma Butler Gallery"><details open><summary>Artists</summary><nav aria-label="Artists"></nav></details></aside>
 <main class="content" id="main"><p role="status">Loading gallery…</p></main>
 </div>
-<footer><a href="./admin.html">Staff sign-in</a></footer>
+<footer><a href="./admin.html">Open staff portal</a></footer>
 <dialog class="lightbox" aria-label="Artwork viewer">
 <img alt="" hidden><p data-image-status role="status"></p><p data-caption></p>
 <nav aria-label="Artwork lightbox"><button type="button" data-prev>Previous</button><button type="button" data-next>Next</button>

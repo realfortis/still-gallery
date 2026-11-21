@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { build } from 'esbuild';
 import { copyFile, mkdir, readFile, readdir, writeFile } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
@@ -31,9 +32,32 @@ await mkdir(output, { recursive: true });
 if (mode === 'release' && (await readdir(output)).length) {
   throw new Error('Use an empty release directory so private files cannot be included.');
 }
+const previewPaths = {};
+if (mode === 'local') {
+  const workById = new Map(snapshot.artworks.map((work) => [work.id, work]));
+  const assetById = new Map(snapshot.assets.map((asset) => [asset.id, asset]));
+  await mkdir(join(output, 'page-data'), { recursive: true });
+  const index = snapshot.pages.map(({ route, title, kind, roster_order }) =>
+    ({ route, title, kind, roster_order }));
+  const { settings } = snapshot;
+  await writeFile(join(output, 'page-data', 'index.json'), JSON.stringify({ settings, list: index }));
+  for (const page of snapshot.pages) {
+    const works = [...new Set(page.placements.map(({ work_id }) => work_id))]
+      .map((id) => workById.get(id)).filter(Boolean)
+      .map(({ id, asset_id, title, artist, caption, edited }) =>
+        ({ id, asset_id, title, artist, caption, edited }));
+    const assetIds = new Set([...page.media_ids, ...works.map(({ asset_id }) => asset_id), settings.logo, settings.background]);
+    const assets = [...assetIds].map((id) => assetById.get(id)).filter(Boolean)
+      .map(({ id, detail, thumb }) => ({ id, detail, thumbnail: thumb }));
+    const json = JSON.stringify({ page, works, assets });
+    const name = createHash('sha256').update(json).digest('hex') + '.json';
+    previewPaths[page.route] = name;
+    await writeFile(join(output, 'page-data', name), json);
+  }
+}
 const policy = [
   "default-src 'none'", "script-src 'self'", "style-src 'self' https://use.typekit.net https://p.typekit.net",
-  "font-src https://use.typekit.net", `img-src 'self' blob: ${supabase.url} https://p.typekit.net`,
+  "font-src 'self' https://use.typekit.net", `img-src 'self' blob: ${supabase.url} https://p.typekit.net`,
   `connect-src 'self' ${supabase.url}`, "base-uri 'none'", "form-action 'none'"
 ].join('; ');
 
@@ -49,7 +73,8 @@ const menu = [
   ['Home', 'index.html'], ['About', 'about.htm'], ['Exhibitions', 'exhibitions.htm'],
   ['Services', 'services.htm'], ['Contact', 'contact.htm']
 ].map(([label, route]) => `<a href="./${route}" data-route="${route}">${label}</a>`).join(' <span aria-hidden="true">|</span> ');
-const visitor = `${head('Emma Butler Gallery', 'emma.css', 'emma.js')}
+const cssRevision = createHash('sha256').update(await readFile(join(root, 'pages/emma/legacy.css'))).digest('hex').slice(0, 12);
+const visitor = `${head('Emma Butler Gallery', 'emma.css?v=' + cssRevision, 'emma.js')}
 <body><img id="gallery-background" alt="">
 <header class="masthead"><div class="masthead-in">
 <p class="address"></p><a class="brand" href="./index.html" data-route="index.html">Emma Butler Gallery</a>
@@ -76,6 +101,8 @@ await Promise.all([
   ...paths.map((route) => writeFile(join(output, route), visitor)),
   writeFile(join(output, 'admin.html'), admin),
   writeFile(join(output, '.nojekyll'), ''),
+  copyFile(join(root, 'pages/emma/fonts/marcellus.woff2'), join(output, 'marcellus.woff2')),
+  copyFile(join(root, 'pages/emma/fonts/OFL-Marcellus.txt'), join(output, 'OFL-Marcellus.txt')),
   copyFile(join(root, 'pages/emma/legacy.css'), join(output, 'emma.css')),
   copyFile(join(root, 'public/site.css'), join(output, 'site.css')),
   build({
@@ -88,6 +115,7 @@ await Promise.all([
     define: {
       EMMA_CONFIG: JSON.stringify(supabase),
       EMMA_MODE: JSON.stringify(mode),
+      EMMA_PREVIEW_PATHS: JSON.stringify(previewPaths),
       EMMA_LEGACY_PATHS: JSON.stringify(legacy)
     }
   })

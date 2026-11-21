@@ -19,8 +19,19 @@ export async function rows(client, table, columns = '*', filter = (query) => que
   }
 }
 
-function memberships(page) {
-  return (page?.placements || []).map((item) => item.work_id);
+async function withIds(client, table, columns, ids, filter = (query) => query) {
+  const unique = [...new Set(ids.filter(isUuid))];
+  const results = [];
+  // Keep request URLs short without serializing requests for a large exhibition.
+  for (let start = 0; start < unique.length; start += 300) {
+    const group = unique.slice(start, start + 300);
+    const batches = [];
+    for (let index = 0; index < group.length; index += 75) {
+      batches.push(rows(client, table, columns, (query) => filter(query).in('id', group.slice(index, index + 75))));
+    }
+    results.push(...(await Promise.all(batches)).flat());
+  }
+  return results;
 }
 
 export async function loadPage(client, route, preview) {
@@ -33,23 +44,16 @@ export async function loadPage(client, route, preview) {
     ]).then(([settings, page, list]) => ({ settings, page, list }))
     : check(await client.rpc('emma_public_page', { page_route: route }));
   const { settings, page, list } = data;
-  const ids = [...new Set(memberships(page))];
-  const works = [];
-  for (let index = 0; index < ids.length; index += 75) {
-    works.push(...await rows(client, 'emma_artworks', '*', (query) =>
-      visibility(query).in('id', ids.slice(index, index + 75))));
-  }
-  const assets = [...works.map((work) => work.asset_id), settings?.logo, settings?.background];
-  const template = document.createElement('template');
-  template.innerHTML = page?.body || '';
-  for (const node of template.content.querySelectorAll('[data-asset]')) assets.push(node.dataset.asset);
-  const assetRows = [];
-  const unique = [...new Set(assets.filter(isUuid))];
-  for (let index = 0; index < unique.length; index += 75) {
-    assetRows.push(...await rows(client, 'emma_assets', 'id,detail,thumbnail', (query) =>
-      query.in('id', unique.slice(index, index + 75))));
-  }
-  return { settings, page, list, works, assets: assetRows };
+  if (!settings || !page) return { ...data, works: [], assets: [] };
+  const [works, siteAssets] = await Promise.all([
+    withIds(client, 'emma_artworks', 'id,asset_id,title,artist,caption,edited',
+      (page.placements || []).map(({ work_id }) => work_id), visibility),
+    withIds(client, 'emma_assets', 'id,detail,thumbnail',
+      [...(page.media_ids || []), settings.logo, settings.background])
+  ]);
+  const artAssets = await withIds(client, 'emma_assets', 'id,detail,thumbnail',
+    works.map(({ asset_id }) => asset_id).filter((id) => !siteAssets.some((asset) => asset.id === id)));
+  return { settings, page, list, works, assets: [...siteAssets, ...artAssets] };
 }
 
 export function isUuid(value) {

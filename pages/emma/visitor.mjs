@@ -1,5 +1,4 @@
 import DOMPurify from 'dompurify';
-import { emmaClient, loadPage, signedImages, check } from './store.mjs';
 
 const main = document.querySelector('main');
 const dialog = document.querySelector('dialog');
@@ -19,6 +18,10 @@ function linkTo(page) {
 }
 
 function applyImage(image, url, text) {
+  if (typeof url?.then === 'function') {
+    url.then((value) => applyImage(image, value, text), () => applyImage(image, '', text));
+    return;
+  }
   if (url) image.src = url;
   else {
     const substitute = document.createElement('span');
@@ -216,18 +219,28 @@ function wireLightbox(detailsFor) {
 
 async function getData() {
   if (source === 'local') {
-    const response = await fetch('./preview.json', { cache: 'no-store' });
-    if (!response.ok) throw new Error('Preview data could not load.');
-    const snapshot = await response.json();
-    return { ...snapshot, page: snapshot.pages.find((item) => item.route === route),
-      list: snapshot.pages, works: snapshot.artworks,
-      urlFor: (file) => file ? './media/' + encodeURIComponent(file) : '' };
+    const file = Object.hasOwn(EMMA_PREVIEW_PATHS, route) ? EMMA_PREVIEW_PATHS[route] : null;
+    if (!file) return {};
+    const read = async (name) => {
+      const response = await fetch('./page-data/' + name);
+      if (!response.ok) throw new Error('Preview data could not load.');
+      return response.json();
+    };
+    const [index, content] = await Promise.all([read('index.json'), read(file)]);
+    return { ...index, ...content, urlFor: (name) => name ? './media/' + encodeURIComponent(name) : '' };
   }
+  const { emmaClient, loadPage, signedImages, check } = await import('./store.mjs');
   const client = emmaClient(source === 'staff');
   if (source === 'staff' && !check(await client.rpc('is_gallery_staff'))) throw new Error('Staff sign-in required.');
   const data = await loadPage(client, route, source === 'staff');
   const thumbs = new Set(data.works.map((item) => item.asset_id));
-  const urlFor = await signedImages(client, data.assets.map((item) => thumbs.has(item.id) ? item.thumbnail : item.detail));
+  const paths = data.assets.flatMap((item) => [
+    thumbs.has(item.id) ? item.thumbnail : null,
+    !thumbs.has(item.id) || item.id === data.settings?.logo || item.id === data.settings?.background ||
+      data.page?.media_ids?.includes(item.id) ? item.detail : null
+  ]);
+  const images = signedImages(client, paths).catch(() => () => '');
+  const urlFor = (file) => file ? images.then((resolve) => resolve(file)) : '';
   const detailsFor = async (file) => file ? (await signedImages(client, [file]))(file) : '';
   return { ...data, urlFor, detailsFor };
 }
@@ -248,9 +261,13 @@ async function start() {
   }
   const logo = urlFor(assetMap.get(settings.logo)?.detail);
   const background = urlFor(assetMap.get(settings.background)?.detail);
-  if (logo) document.querySelector('.artists img').src = logo;
-  else document.querySelector('.artists img').hidden = true;
-  if (background) document.getElementById('gallery-background').src = background;
+  Promise.resolve(logo).then((url) => {
+    if (url) document.querySelector('.artists img').src = url;
+    else document.querySelector('.artists img').hidden = true;
+  });
+  Promise.resolve(background).then((url) => {
+    if (url) document.getElementById('gallery-background').src = url;
+  });
   if (/^[a-z0-9]+$/i.test(settings.font_project || '')) {
     const font = document.createElement('link');
     font.rel = 'stylesheet';
@@ -270,7 +287,11 @@ async function start() {
   applyPageEdits(content, page, settings, list);
   applyHours(content, settings.hours);
   enhanceLinks(content);
-  for (const image of content.querySelectorAll('img[data-asset]')) {
+  for (const [index, image] of [...content.querySelectorAll('img[data-asset]')].entries()) {
+    if (page.route === 'index.html' && index === 0) {
+      image.loading = 'eager';
+      image.fetchPriority = 'high';
+    }
     applyImage(image, urlFor(assetMap.get(image.dataset.asset)?.detail));
   }
   addArtwork(content, page, works, assetMap, urlFor, detailsFor);

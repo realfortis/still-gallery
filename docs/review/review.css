@@ -93,23 +93,3 @@ footer a { color: #fff; font-size: .875rem; }
   .content table, .content tbody, .content tr { display: block; }
   .content tr { display: grid; gap: .35rem; grid-template-columns: repeat(auto-fit, minmax(min(32%, 13rem), 1fr)); }
 }
-
-.review-signin {
-  width: min(28rem, calc(100% - 2rem));
-  margin: clamp(1rem, 10vh, 6rem) auto;
-  padding: clamp(1rem, 4vw, 2rem);
-  background: #fff;
-  border: 1px solid #c5bfb5;
-}
-.review-signin h1 { margin-top: 0; font-family: Marcellus, Georgia, serif; }
-.review-signin form, .review-signin label { display: grid; gap: .5rem; }
-.review-signin form { gap: 1rem; }
-.review-signin input, .review-signin button, [data-review-signout] {
-  padding: .65rem .85rem;
-  border: 1px solid #756d63;
-  font: inherit;
-}
-.review-signin input { width: 100%; }
-.review-signin button, [data-review-signout] { color: #fff; background: #514337; cursor: pointer; }
-.review-signin button:disabled { opacity: .65; cursor: wait; }
-.review-signin [role=status]:empty { display: none; }

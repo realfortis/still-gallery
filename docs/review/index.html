@@ -3,31 +3,21 @@
 <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self' https://use.typekit.net https://p.typekit.net; font-src 'self' https://use.typekit.net; img-src 'self' blob: https://yexecawftuosunjnolvp.supabase.co https://p.typekit.net; connect-src 'self' https://yexecawftuosunjnolvp.supabase.co; base-uri 'none'; form-action 'none'">
 <meta name="robots" content="noindex, nofollow, noarchive"><meta name="referrer" content="no-referrer">
-<title>Private site review</title><link rel="stylesheet" href="./review.css">
-<script type="module" src="./review.js"></script>
+<title>Gallery</title><link rel="stylesheet" href="./review.css?v=public">
+<script type="module" src="./review.js?v=public"></script>
 </head>
-<body><section class="review-signin" aria-labelledby="review-title">
-<h1 id="review-title">Private site review</h1>
-<p>Sign in with your existing staff account to view the site.</p>
-<form method="post">
-<label>Email<input type="email" name="email" autocomplete="username" required></label>
-<label>Password<input type="password" name="password" autocomplete="current-password" required></label>
-<button type="submit">Sign in to review</button>
-</form>
-<p role="status"></p>
-</section>
-<div data-gallery hidden><img id="gallery-background" alt="">
+<body><img id="gallery-background" alt="">
 <header class="masthead"><div class="masthead-in">
-<p class="address"></p><a class="brand" href="./index.html" data-route="index.html"></a>
-<nav class="menu" aria-label="Main"><a href="./index.html" data-route="index.html">Home</a> <span aria-hidden="true">|</span> <a href="./about.htm" data-route="about.htm">About</a> <span aria-hidden="true">|</span> <a href="./exhibitions.htm" data-route="exhibitions.htm">Exhibitions</a> <span aria-hidden="true">|</span> <a href="./services.htm" data-route="services.htm">Services</a> <span aria-hidden="true">|</span> <a href="./contact.htm" data-route="contact.htm">Contact</a></nav>
+<p class="address"></p><a class="brand" href="./" data-route="index.html"></a>
+<nav class="menu" aria-label="Main"><a href="./" data-route="index.html">Home</a> <span aria-hidden="true">|</span> <a href="./?page=about.htm" data-route="about.htm">About</a> <span aria-hidden="true">|</span> <a href="./?page=exhibitions.htm" data-route="exhibitions.htm">Exhibitions</a> <span aria-hidden="true">|</span> <a href="./?page=services.htm" data-route="services.htm">Services</a> <span aria-hidden="true">|</span> <a href="./?page=contact.htm" data-route="contact.htm">Contact</a></nav>
 </div></header>
 <div class="layout">
 <aside class="artists"><img alt=""><details open><summary>Artists</summary><nav aria-label="Artists"></nav></details></aside>
 <main class="content" id="main"><p role="status">Loading gallery…</p></main>
 </div>
-<footer><button type="button" data-review-signout>Sign out</button></footer>
+
 <dialog class="lightbox" aria-label="Artwork viewer">
 <img alt="" hidden><p data-image-status role="status"></p><p data-caption></p>
 <nav aria-label="Artwork lightbox"><button type="button" data-prev>Previous</button><button type="button" data-next>Next</button>
 <span data-count aria-live="polite"></span><button type="button" data-close autofocus>Close</button></nav>
-</dialog></div></body></html>
+</dialog></body></html>

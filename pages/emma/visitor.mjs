@@ -4,9 +4,9 @@ const main = document.querySelector('main');
 const dialog = document.querySelector('dialog');
 const params = new URLSearchParams(location.search);
 const currentPath = decodeURIComponent(location.pathname.split('/').pop() || 'index.html');
-const review = EMMA_MODE === 'review';
-const route = review || currentPath === 'entry.html' ? (params.get('page') || 'index.html') : currentPath;
-const source = review || params.has('preview') ? 'staff' : EMMA_MODE === 'local' ? 'local' : 'public';
+const hosted = EMMA_MODE === 'hosted';
+const route = hosted || currentPath === 'entry.html' ? (params.get('page') || 'index.html') : currentPath;
+const source = !hosted && params.has('preview') ? 'staff' : EMMA_MODE === 'local' ? 'local' : 'public';
 const legacyPaths = new Set(EMMA_LEGACY_PATHS);
 let lightboxGroup = [];
 let lightboxIndex = 0;
@@ -14,7 +14,7 @@ let lightboxTrigger;
 let lightboxRequest = 0;
 
 function linkTo(page) {
-  if (review) return page === 'index.html' ? './' : './?page=' + encodeURIComponent(page);
+  if (hosted) return page === 'index.html' ? './' : './?page=' + encodeURIComponent(page);
   const link = legacyPaths.has(page) ? './' + encodeURIComponent(page) : './entry.html?page=' + encodeURIComponent(page);
   return source === 'staff' ? link + (link.includes('?') ? '&' : '?') + 'preview' : link;
 }
@@ -219,7 +219,7 @@ function wireLightbox(detailsFor) {
   });
 }
 
-async function getData(staffClient) {
+async function getData() {
   if (EMMA_MODE === 'local' && source === 'local') {
     const file = Object.hasOwn(EMMA_PREVIEW_PATHS, route) ? EMMA_PREVIEW_PATHS[route] : null;
     if (!file) return {};
@@ -232,8 +232,8 @@ async function getData(staffClient) {
     return { ...index, ...content, urlFor: (name) => name ? './media/' + encodeURIComponent(name) : '' };
   }
   const { emmaClient, loadPage, signedImages, check } = await import('./store.mjs');
-  const client = staffClient || emmaClient(source === 'staff');
-  if (!staffClient && source === 'staff' && !check(await client.rpc('is_gallery_staff'))) throw new Error('Staff sign-in required.');
+  const client = emmaClient(source === 'staff');
+  if (source === 'staff' && !check(await client.rpc('is_gallery_staff'))) throw new Error('Staff sign-in required.');
   const data = await loadPage(client, route, source === 'staff');
   const thumbs = new Set(data.works.map((item) => item.asset_id));
   const paths = data.assets.flatMap((item) => [
@@ -247,10 +247,11 @@ async function getData(staffClient) {
   return { ...data, urlFor, detailsFor };
 }
 
-async function start(staffClient) {
-  const { page, settings, list, works, assets, urlFor, detailsFor = urlFor } = await getData(staffClient);
+async function start() {
+  const { page, settings, list, works, assets, urlFor, detailsFor = urlFor } = await getData();
   if (!settings || !page) {
-    main.textContent = 'This page is unavailable.';
+    main.textContent = settings ? 'This page is unavailable.' : 'This gallery is currently unavailable.';
+    if (hosted) document.querySelector('.masthead').hidden = true;
     return;
   }
   const assetMap = new Map(assets.map((item) => [item.id, item]));
@@ -302,13 +303,8 @@ async function start(staffClient) {
   wireLightbox(detailsFor);
 }
 
-const load = review ? import('./review.mjs').then(({ openReview }) => openReview(start)) : start();
-load.catch((error) => {
+start().catch((error) => {
   console.error(error);
-  if (review) {
-    document.querySelector('.review-signin [role=status]').textContent = 'The review could not load. Please reload and try again.';
-    return;
-  }
   main.textContent = source === 'staff' ? 'The staff preview could not load. Open the staff portal and check your sign-in.'
     : 'The gallery could not load. Please try again.';
 });

@@ -4,6 +4,7 @@ import { build } from 'esbuild';
 import { home, pagesDetail, pagesAdmin } from '../src/views.mjs';
 import { catalogData, pagesLinks } from './catalog.mjs';
 import { exampleWorks } from '../src/examples.mjs';
+import { buildReview } from './emma/build-review.mjs';
 
 const root = new URL('../', import.meta.url);
 const docs = new URL('docs/', root);
@@ -50,6 +51,7 @@ const pages = { staff: supabase ? './admin.html' : backendOrigin ? `${backendOri
 const adminFiles = ['admin.html', 'admin.js', 'admin-view.js', 'gallery-store.js', 'supabase-client.js'];
 if (supabase) {
   await Promise.all([
+    buildReview(new URL('review/', docs), supabase),
     writePage('admin.html', pagesAdmin(pages)),
     copyFile(new URL('pages/admin.mjs', root), new URL('admin.js', docs)),
     copyFile(new URL('pages/gallery-store.mjs', root), new URL('gallery-store.js', docs)),
@@ -67,7 +69,10 @@ if (supabase) {
     })
   ]);
 } else {
-  await Promise.all(adminFiles.map((file) => rm(new URL(file, docs), { force: true })));
+  await Promise.all([
+    ...adminFiles.map((file) => rm(new URL(file, docs), { force: true })),
+    rm(new URL('review/', docs), { recursive: true, force: true })
+  ]);
 }
 const demo = [...exampleWorks].sort((a, b) => b.featured - a.featured || b.id - a.id);
 const catalog = catalogData(live ? [] : demo);

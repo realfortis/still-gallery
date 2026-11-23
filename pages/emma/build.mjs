@@ -3,6 +3,7 @@ import { build } from 'esbuild';
 import { copyFile, mkdir, readFile, readdir, writeFile } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { pageHead, visitorPage } from './shell.mjs';
 
 const root = fileURLToPath(new URL('../../', import.meta.url));
 const [mode, manifestArg, outputArg] = process.argv.slice(2);
@@ -55,43 +56,10 @@ if (mode === 'local') {
     await writeFile(join(output, 'page-data', name), json);
   }
 }
-const policy = [
-  "default-src 'none'", "script-src 'self'", "style-src 'self' https://use.typekit.net https://p.typekit.net",
-  "font-src 'self' https://use.typekit.net", `img-src 'self' blob: ${supabase.url} https://p.typekit.net`,
-  `connect-src 'self' ${supabase.url}`, "base-uri 'none'", "form-action 'none'"
-].join('; ');
-
-const head = (title, css, script) => `<!doctype html>
-<html lang="en"><head>
-<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content="${policy}">
-<title>${title}</title><link rel="stylesheet" href="./${css}">
-<script type="module" src="./${script}"></script>
-</head>`;
-
-const menu = [
-  ['Home', 'index.html'], ['About', 'about.htm'], ['Exhibitions', 'exhibitions.htm'],
-  ['Services', 'services.htm'], ['Contact', 'contact.htm']
-].map(([label, route]) => `<a href="./${route}" data-route="${route}">${label}</a>`).join(' <span aria-hidden="true">|</span> ');
 const cssRevision = createHash('sha256').update(await readFile(join(root, 'pages/emma/legacy.css'))).digest('hex').slice(0, 12);
-const visitor = `${head('Emma Butler Gallery', 'emma.css?v=' + cssRevision, 'emma.js')}
-<body><img id="gallery-background" alt="">
-<header class="masthead"><div class="masthead-in">
-<p class="address"></p><a class="brand" href="./index.html" data-route="index.html">Emma Butler Gallery</a>
-<nav class="menu" aria-label="Main">${menu}</nav>
-</div></header>
-<div class="layout">
-<aside class="artists"><img alt="Emma Butler Gallery"><details open><summary>Artists</summary><nav aria-label="Artists"></nav></details></aside>
-<main class="content" id="main"><p role="status">Loading gallery…</p></main>
-</div>
-<footer><a href="./admin.html">Open staff portal</a></footer>
-<dialog class="lightbox" aria-label="Artwork viewer">
-<img alt="" hidden><p data-image-status role="status"></p><p data-caption></p>
-<nav aria-label="Artwork lightbox"><button type="button" data-prev>Previous</button><button type="button" data-next>Next</button>
-<span data-count aria-live="polite"></span><button type="button" data-close autofocus>Close</button></nav>
-</dialog></body></html>\n`;
-
-const admin = `${head('Staff sign-in · Emma Butler Gallery', 'site.css', 'emma-admin.js')}
+const title = 'Emma Butler Gallery';
+const visitor = visitorPage({ title, css: 'emma.css?v=' + cssRevision, script: 'emma.js', supabase });
+const admin = `${pageHead({ title: 'Staff sign-in · ' + title, css: 'site.css', script: 'emma-admin.js', supabase })}
 <body><header class="top"><div class="wrap top-inner">
 <a class="brand" href="./index.html">Emma Butler Gallery</a></div></header>
 <main id="main" class="wrap admin"><p role="status">Loading staff portal…</p></main></body></html>\n`;

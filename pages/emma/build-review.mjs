@@ -26,14 +26,27 @@ export async function buildReview(output, supabase) {
     }
   }).then(({ outputFiles }) => outputFiles[0].contents);
 
-  const [stylesheet, bundle, adminBundle] = await Promise.all([
+  const font = new URL('fonts/marcellus.woff2', import.meta.url);
+  const [stylesheet, bundle, adminBundle, fontBytes, settings, background, logo] = await Promise.all([
     readFile(css),
     compile('visitor.mjs', script),
-    compile('admin.mjs', adminScript)
+    compile('admin.mjs', adminScript),
+    readFile(font),
+    readFile(new URL('branding/settings.json', import.meta.url), 'utf8').then(JSON.parse),
+    readFile(new URL('branding/background.webp', import.meta.url)),
+    readFile(new URL('branding/logo.webp', import.meta.url))
   ]);
+  const inlineStyle = stylesheet.toString('utf8').replace('./marcellus.woff2',
+    'data:font/woff2;base64,' + fontBytes.toString('base64'));
+  const embed = (file, bytes) => ({ file, src: 'data:image/webp;base64,' + bytes.toString('base64') });
   const page = visitorPage({
-    title: 'Gallery',
-    css: 'review.css?v=' + revision(stylesheet),
+    title: settings.title,
+    inlineStyle,
+    branding: {
+      address: settings.address,
+      background: embed(settings.background, background),
+      logo: embed(settings.logo, logo)
+    },
     script: 'review.js?v=' + revision(bundle),
     supabase,
     hosted: true
@@ -52,7 +65,7 @@ export async function buildReview(output, supabase) {
     writeFile(script, bundle),
     writeFile(new URL('admin.html', output), admin),
     writeFile(adminScript, adminBundle),
-    copyFile(new URL('fonts/marcellus.woff2', import.meta.url), new URL('marcellus.woff2', output)),
+    copyFile(font, new URL('marcellus.woff2', output)),
     copyFile(new URL('fonts/OFL-Marcellus.txt', import.meta.url), new URL('OFL-Marcellus.txt', output))
   ]);
 }

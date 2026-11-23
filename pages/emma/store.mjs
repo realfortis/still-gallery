@@ -35,16 +35,17 @@ async function withIds(client, table, columns, ids, filter = (query) => query) {
 }
 
 export async function loadPage(client, route, preview) {
-  const visibility = (query) => preview ? query : query.eq('published', true);
-  const data = preview
+  return preview
     ? await Promise.all([
       client.from('emma_settings').select('*').maybeSingle().then(check),
       client.from('emma_pages').select('*').eq('route', route).maybeSingle().then(check),
       rows(client, 'emma_pages', 'route,title,kind,roster_order')
     ]).then(([settings, page, list]) => ({ settings, page, list }))
     : check(await client.rpc('emma_public_page', { page_route: route }));
-  const { settings, page, list } = data;
-  if (!settings || !page) return { ...data, works: [], assets: [] };
+}
+
+export async function loadPageMedia(client, { settings, page }, preview) {
+  const visibility = (query) => preview ? query : query.eq('published', true);
   const [works, siteAssets] = await Promise.all([
     withIds(client, 'emma_artworks', 'id,asset_id,title,artist,caption,edited',
       (page.placements || []).map(({ work_id }) => work_id), visibility),
@@ -53,7 +54,7 @@ export async function loadPage(client, route, preview) {
   ]);
   const artAssets = await withIds(client, 'emma_assets', 'id,detail,thumbnail',
     works.map(({ asset_id }) => asset_id).filter((id) => !siteAssets.some((asset) => asset.id === id)));
-  return { settings, page, list, works, assets: [...siteAssets, ...artAssets] };
+  return { works, assets: [...siteAssets, ...artAssets] };
 }
 
 export function isUuid(value) {

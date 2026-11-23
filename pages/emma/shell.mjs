@@ -5,11 +5,12 @@ export function pageHead({ title, css, script, supabase, hosted = false }) {
     `connect-src 'self' ${supabase.url}`, "base-uri 'none'", "form-action 'none'"
   ].join('; ');
 
+  const preconnect = hosted ? `<link rel="preconnect" href="${supabase.url}" crossorigin>\n` : '';
   return `<!doctype html>
 <html lang="en"><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Content-Security-Policy" content="${policy}">${hosted ? '\n<meta name="robots" content="noindex, nofollow, noarchive"><meta name="referrer" content="no-referrer">' : ''}
-<title>${title}</title><link rel="stylesheet" href="./${css}">
+${preconnect}<title>${title}</title><link rel="stylesheet" href="./${css}">
 <script type="module" src="./${script}"></script>
 </head>`;
 }

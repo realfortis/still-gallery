@@ -15,6 +15,7 @@ const background = document.getElementById('gallery-background');
 let artistList = '';
 let fontLink;
 let nextPageRequest = 0;
+let publicClient;
 let lightboxGroup = [];
 let lightboxIndex = 0;
 let lightboxTrigger;
@@ -239,23 +240,29 @@ async function getData(route) {
     };
     const [index, content] = await Promise.all([read('index.json'), read(file)]);
     const urlFor = (name) => name ? './media/' + encodeURIComponent(name) : '';
-    return { ...index, ...content, urlFor, sharedImageUrls: () => urlFor };
+    return { ...index, page: content.page, loadMedia: () => ({
+      works: content.works, assets: content.assets, urlFor, sharedImageUrls: () => urlFor
+    }) };
   }
-  const { emmaClient, loadPage, signedImages, check } = await import('./store.mjs');
-  const client = emmaClient(source === 'staff');
-  if (source === 'staff' && !check(await client.rpc('is_gallery_staff'))) throw new Error('Staff sign-in required.');
-  const data = await loadPage(client, route, source === 'staff');
-  const thumbs = new Set(data.works.map((item) => item.asset_id));
-  const pageImages = new Set(data.page?.media_ids);
-  const paths = data.assets.flatMap((item) => [
-    thumbs.has(item.id) ? item.thumbnail : null,
-    pageImages.has(item.id) ? item.detail : null
-  ]);
-  const images = signedImages(client, paths).catch(() => () => '');
-  const urlFor = (file) => file ? images.then((resolve) => resolve(file)) : '';
-  const detailsFor = async (file) => file ? (await signedImages(client, [file]))(file) : '';
-  const sharedImageUrls = (files) => signedImages(client, files).catch(() => () => '');
-  return { ...data, urlFor, detailsFor, sharedImageUrls };
+  const { emmaClient, loadPage, loadPageMedia, signedImages, check } = await import('./store.mjs');
+  const staff = source === 'staff';
+  const client = staff ? emmaClient(true) : (publicClient ??= emmaClient());
+  if (staff && !check(await client.rpc('is_gallery_staff'))) throw new Error('Staff sign-in required.');
+  const data = await loadPage(client, route, staff);
+  return { ...data, loadMedia: async () => {
+    const { works, assets } = await loadPageMedia(client, data, staff);
+    const thumbs = new Set(works.map((item) => item.asset_id));
+    const pageImages = new Set(data.page.media_ids);
+    const paths = assets.flatMap((item) => [
+      thumbs.has(item.id) ? item.thumbnail : null,
+      pageImages.has(item.id) ? item.detail : null
+    ]);
+    const images = signedImages(client, paths).catch(() => () => '');
+    const urlFor = (file) => file ? images.then((resolve) => resolve(file)) : '';
+    const detailsFor = async (file) => file ? (await signedImages(client, [file]))(file) : '';
+    const sharedImageUrls = (files) => signedImages(client, files).catch(() => () => '');
+    return { works, assets, urlFor, detailsFor, sharedImageUrls };
+  } };
 }
 
 function updateBrandImages(settings, assets, sharedImageUrls) {
@@ -278,12 +285,11 @@ function updateBrandImages(settings, assets, sharedImageUrls) {
   });
 }
 
-function updateShell(settings, list, assets, sharedImageUrls) {
+function updateShell(settings, list) {
   masthead.hidden = false;
   document.querySelector('.brand').textContent = settings.title;
   logo.alt = settings.title;
   document.querySelector('.address').textContent = settings.address;
-  updateBrandImages(settings, assets, sharedImageUrls);
   const project = settings.font_project || '';
   if (/^[a-z0-9]+$/i.test(project)) {
     const href = 'https://use.typekit.net/' + project + '.css';
@@ -323,7 +329,7 @@ function markCurrentPage(route) {
   }
 }
 
-function renderPage(route, { page, settings, list, works, assets, urlFor, detailsFor = urlFor, sharedImageUrls }) {
+function renderPage(route, { page, settings, list }) {
   if (!settings || !page) {
     markCurrentPage(route);
     main.textContent = settings ? 'This page is unavailable.' : 'This gallery is currently unavailable.';
@@ -332,27 +338,31 @@ function renderPage(route, { page, settings, list, works, assets, urlFor, detail
       masthead.hidden = true;
       artistNav.replaceChildren();
       artistList = '';
-      updateBrandImages({}, new Map(), sharedImageUrls);
+      updateBrandImages({}, new Map());
     }
     return;
   }
-  const assetMap = new Map(assets.map((item) => [item.id, item]));
   document.title = page.html_title;
-  updateShell(settings, list, assetMap, sharedImageUrls);
+  updateShell(settings, list);
   markCurrentPage(route);
   const content = safeContent(page.body);
   applyPageEdits(content, page, settings, list);
   applyHours(content, settings.hours);
   enhanceLinks(content);
-  for (const [index, image] of [...content.querySelectorAll('img[data-asset]')].entries()) {
+  main.replaceChildren(content);
+}
+
+function renderMedia({ page, settings }, { works, assets, urlFor, detailsFor = urlFor, sharedImageUrls }) {
+  const assetMap = new Map(assets.map((item) => [item.id, item]));
+  updateBrandImages(settings, assetMap, sharedImageUrls);
+  for (const [index, image] of [...main.querySelectorAll('img[data-asset]')].entries()) {
     if (page.route === 'index.html' && index === 0) {
       image.loading = 'eager';
       image.fetchPriority = 'high';
     }
     applyImage(image, urlFor(assetMap.get(image.dataset.asset)?.detail));
   }
-  addArtwork(content, page, works, assetMap, urlFor, detailsFor);
-  main.replaceChildren(content);
+  addArtwork(main, page, works, assetMap, urlFor, detailsFor);
 }
 
 async function loadRoute(route, scrollTop) {
@@ -360,14 +370,16 @@ async function loadRoute(route, scrollTop) {
   main.setAttribute('aria-busy', 'true');
   if (dialog.open) dialog.close();
   lightboxTrigger = undefined;
+  let data;
   try {
-    const data = await getData(route);
+    data = await getData(route);
     if (request !== nextPageRequest) return;
     if (dialog.open) dialog.close();
     lightboxTrigger = undefined;
     renderPage(route, data);
   } catch (error) {
     if (request !== nextPageRequest) return;
+    data = undefined;
     console.error(error);
     markCurrentPage(route);
     main.textContent = source === 'staff' ? 'The staff preview could not load. Open the staff portal and check your sign-in.'
@@ -377,6 +389,19 @@ async function loadRoute(route, scrollTop) {
   if (scrollTop !== undefined) {
     main.focus({ preventScroll: true });
     window.scrollTo(0, scrollTop);
+  }
+  if (!data?.page || !data.settings) return;
+  try {
+    const media = await data.loadMedia();
+    if (request !== nextPageRequest) return;
+    renderMedia(data, media);
+    if (scrollTop) window.scrollTo(0, scrollTop);
+  } catch (error) {
+    if (request !== nextPageRequest) return;
+    console.error(error);
+    const notice = document.createElement('p');
+    notice.textContent = 'Some gallery images could not load.';
+    main.append(notice);
   }
 }
 

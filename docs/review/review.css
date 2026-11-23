@@ -71,8 +71,22 @@ body:has(main a[data-work], main .new-artwork) :is(.layout, footer) { width: min
 .new-artwork { margin-block: 1.25rem; }
 .new-artwork p { text-align: center; }
 .image-missing { display: inline-block; padding: .5rem; border: 1px solid #ddd; }
-footer { padding: .65rem 1rem; text-align: right; background: #666; }
-footer a { color: #fff; font-size: .875rem; }
+footer {
+  display: flex;
+  justify-content: flex-end;
+  margin-block: 1.5rem;
+  padding: .75rem clamp(1rem, 4vw, 1.5rem);
+  background: #666;
+}
+footer a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: .5rem .75rem;
+  color: #fff;
+  font-size: .875rem;
+  line-height: 1.4;
+}
 .lightbox { max-width: min(980px, 94vw); max-height: 94vh; width: fit-content; padding: .7rem; border: 0; color: #232323; }
 .lightbox::backdrop { background: rgb(0 0 0 / .82); }
 .lightbox img { display: block; max-width: min(90vw, 900px); max-height: 71vh; width: auto; height: auto; margin-inline: auto; }

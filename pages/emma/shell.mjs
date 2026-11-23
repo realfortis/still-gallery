@@ -34,7 +34,7 @@ export function visitorPage({ title, css, script, supabase, hosted = false }) {
   return `${pageHead({ title, css, script, supabase, hosted })}
 <body><img id="gallery-background" alt="">
 <header class="masthead"><div class="masthead-in">
-<p class="address"></p><a class="brand" href="${hosted ? './' : './index.html'}" data-route="index.html">${hosted ? '' : title}</a>
+<p class="address"></p><span class="brand">${hosted ? '' : title}</span>
 <nav class="menu" aria-label="Main">${navigation}</nav>
 </div></header>
 <div class="layout">

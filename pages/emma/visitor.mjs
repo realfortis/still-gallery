@@ -5,12 +5,20 @@ const dialog = document.querySelector('dialog');
 const params = new URLSearchParams(location.search);
 const currentPath = decodeURIComponent(location.pathname.split('/').pop() || 'index.html');
 const hosted = EMMA_MODE === 'hosted';
-const route = hosted || currentPath === 'entry.html' ? (params.get('page') || 'index.html') : currentPath;
+const initialRoute = hosted || currentPath === 'entry.html' ? (params.get('page') || 'index.html') : currentPath;
 const source = !hosted && params.has('preview') ? 'staff' : EMMA_MODE === 'local' ? 'local' : 'public';
 const legacyPaths = new Set(EMMA_LEGACY_PATHS);
+const masthead = document.querySelector('.masthead');
+const artistNav = document.querySelector('.artists nav');
+const logo = document.querySelector('.artists img');
+const background = document.getElementById('gallery-background');
+let artistList = '';
+let fontLink;
+let nextPageRequest = 0;
 let lightboxGroup = [];
 let lightboxIndex = 0;
 let lightboxTrigger;
+let lightboxDetailsFor;
 let lightboxRequest = 0;
 
 function linkTo(page) {
@@ -170,13 +178,14 @@ function addArtwork(fragment, page, works, assets, urlFor, detailsFor) {
       lightboxTrigger = anchor;
       lightboxGroup = [...entries.values()].filter((entry) => entry.group === item.group);
       lightboxIndex = lightboxGroup.indexOf(item);
+      lightboxDetailsFor = detailsFor;
       if (!dialog.open) dialog.showModal();
-      drawLightbox(detailsFor);
+      drawLightbox();
     });
   }
 }
 
-async function drawLightbox(detailsFor) {
+async function drawLightbox() {
   const version = ++lightboxRequest;
   const item = lightboxGroup[lightboxIndex];
   const image = dialog.querySelector('img');
@@ -190,7 +199,7 @@ async function drawLightbox(detailsFor) {
   const status = dialog.querySelector('[data-image-status]');
   status.textContent = 'Loading image…';
   let url;
-  try { url = await detailsFor(item.asset?.detail); } catch {}
+  try { url = await lightboxDetailsFor(item.asset?.detail); } catch {}
   if (version !== lightboxRequest || !dialog.open) return;
   if (!url) {
     status.textContent = 'Image unavailable.';
@@ -202,12 +211,12 @@ async function drawLightbox(detailsFor) {
   status.textContent = '';
 }
 
-function wireLightbox(detailsFor) {
+function wireLightbox() {
   const move = (direction) => {
     const next = lightboxIndex + direction;
     if (next < 0 || next >= lightboxGroup.length) return;
     lightboxIndex = next;
-    drawLightbox(detailsFor);
+    drawLightbox();
   };
   dialog.querySelector('[data-prev]').onclick = () => move(-1);
   dialog.querySelector('[data-next]').onclick = () => move(1);
@@ -219,7 +228,7 @@ function wireLightbox(detailsFor) {
   });
 }
 
-async function getData() {
+async function getData(route) {
   if (EMMA_MODE === 'local' && source === 'local') {
     const file = Object.hasOwn(EMMA_PREVIEW_PATHS, route) ? EMMA_PREVIEW_PATHS[route] : null;
     if (!file) return {};
@@ -229,64 +238,108 @@ async function getData() {
       return response.json();
     };
     const [index, content] = await Promise.all([read('index.json'), read(file)]);
-    return { ...index, ...content, urlFor: (name) => name ? './media/' + encodeURIComponent(name) : '' };
+    const urlFor = (name) => name ? './media/' + encodeURIComponent(name) : '';
+    return { ...index, ...content, urlFor, sharedImageUrls: () => urlFor };
   }
   const { emmaClient, loadPage, signedImages, check } = await import('./store.mjs');
   const client = emmaClient(source === 'staff');
   if (source === 'staff' && !check(await client.rpc('is_gallery_staff'))) throw new Error('Staff sign-in required.');
   const data = await loadPage(client, route, source === 'staff');
   const thumbs = new Set(data.works.map((item) => item.asset_id));
+  const pageImages = new Set(data.page?.media_ids);
   const paths = data.assets.flatMap((item) => [
     thumbs.has(item.id) ? item.thumbnail : null,
-    !thumbs.has(item.id) || item.id === data.settings?.logo || item.id === data.settings?.background ||
-      data.page?.media_ids?.includes(item.id) ? item.detail : null
+    pageImages.has(item.id) ? item.detail : null
   ]);
   const images = signedImages(client, paths).catch(() => () => '');
   const urlFor = (file) => file ? images.then((resolve) => resolve(file)) : '';
   const detailsFor = async (file) => file ? (await signedImages(client, [file]))(file) : '';
-  return { ...data, urlFor, detailsFor };
+  const sharedImageUrls = (files) => signedImages(client, files).catch(() => () => '');
+  return { ...data, urlFor, detailsFor, sharedImageUrls };
 }
 
-async function start() {
-  const { page, settings, list, works, assets, urlFor, detailsFor = urlFor } = await getData();
+function updateBrandImages(settings, assets, sharedImageUrls) {
+  const changes = new Map();
+  for (const [image, id] of [[logo, settings.logo], [background, settings.background]]) {
+    const file = assets.get(id)?.detail || '';
+    if (image.dataset.file === file) continue;
+    image.dataset.file = file;
+    if (file) changes.set(image, file);
+    else image.removeAttribute('src');
+  }
+  if (!changes.size) return;
+  Promise.resolve(sharedImageUrls([...changes.values()])).then((resolve) => {
+    for (const [image, file] of changes) {
+      if (image.dataset.file !== file) continue;
+      const url = resolve(file);
+      if (url) image.src = url;
+      else delete image.dataset.file;
+    }
+  });
+}
+
+function updateShell(settings, list, assets, sharedImageUrls) {
+  masthead.hidden = false;
+  document.querySelector('.brand').textContent = settings.title;
+  logo.alt = settings.title;
+  document.querySelector('.address').textContent = settings.address;
+  updateBrandImages(settings, assets, sharedImageUrls);
+  const project = settings.font_project || '';
+  if (/^[a-z0-9]+$/i.test(project)) {
+    const href = 'https://use.typekit.net/' + project + '.css';
+    if (!fontLink) {
+      fontLink = document.createElement('link');
+      fontLink.rel = 'stylesheet';
+      fontLink.href = href;
+      document.head.append(fontLink);
+    } else if (fontLink.href !== href) fontLink.href = href;
+  } else if (fontLink) {
+    fontLink.remove();
+    fontLink = undefined;
+  }
+  const artists = list.filter((item) => item.kind === 'artist').sort((a, b) =>
+    (a.roster_order ?? 999999) - (b.roster_order ?? 999999) || a.title.localeCompare(b.title));
+  const key = JSON.stringify(artists);
+  if (artistList === key) return;
+  artistList = key;
+  for (const anchor of masthead.querySelectorAll('[data-route]')) {
+    anchor.href = linkTo(anchor.dataset.route);
+  }
+  artistNav.replaceChildren(...artists.map((artist) => {
+    const link = document.createElement('a');
+    link.href = linkTo(artist.route);
+    link.dataset.route = artist.route;
+    link.textContent = artist.title;
+    return link;
+  }));
+}
+
+function markCurrentPage(route) {
+  for (const menu of [masthead, artistNav]) {
+    for (const anchor of menu.querySelectorAll('[data-route]')) {
+      if (anchor.dataset.route === route) anchor.setAttribute('aria-current', 'page');
+      else anchor.removeAttribute('aria-current');
+    }
+  }
+}
+
+function renderPage(route, { page, settings, list, works, assets, urlFor, detailsFor = urlFor, sharedImageUrls }) {
   if (!settings || !page) {
+    markCurrentPage(route);
     main.textContent = settings ? 'This page is unavailable.' : 'This gallery is currently unavailable.';
-    if (hosted) document.querySelector('.masthead').hidden = true;
+    document.title = 'Gallery';
+    if (hosted && !settings) {
+      masthead.hidden = true;
+      artistNav.replaceChildren();
+      artistList = '';
+      updateBrandImages({}, new Map(), sharedImageUrls);
+    }
     return;
   }
   const assetMap = new Map(assets.map((item) => [item.id, item]));
   document.title = page.html_title;
-  document.querySelector('.brand').textContent = settings.title;
-  document.querySelector('.artists img').alt = settings.title;
-  document.querySelector('.address').textContent = settings.address;
-  for (const anchor of document.querySelectorAll('.masthead [data-route]')) {
-    anchor.href = linkTo(anchor.dataset.route);
-    if (anchor.dataset.route === route) anchor.setAttribute('aria-current', 'page');
-  }
-  const logo = urlFor(assetMap.get(settings.logo)?.detail);
-  const background = urlFor(assetMap.get(settings.background)?.detail);
-  Promise.resolve(logo).then((url) => {
-    if (url) document.querySelector('.artists img').src = url;
-    else document.querySelector('.artists img').hidden = true;
-  });
-  Promise.resolve(background).then((url) => {
-    if (url) document.getElementById('gallery-background').src = url;
-  });
-  if (/^[a-z0-9]+$/i.test(settings.font_project || '')) {
-    const font = document.createElement('link');
-    font.rel = 'stylesheet';
-    font.href = 'https://use.typekit.net/' + settings.font_project + '.css';
-    document.head.append(font);
-  }
-  const artistNav = document.querySelector('.artists nav');
-  for (const artist of list.filter((item) => item.kind === 'artist').sort((a, b) =>
-    (a.roster_order ?? 999999) - (b.roster_order ?? 999999) || a.title.localeCompare(b.title))) {
-    const link = document.createElement('a');
-    link.href = linkTo(artist.route);
-    link.textContent = artist.title;
-    if (artist.route === route) link.setAttribute('aria-current', 'page');
-    artistNav.append(link);
-  }
+  updateShell(settings, list, assetMap, sharedImageUrls);
+  markCurrentPage(route);
   const content = safeContent(page.body);
   applyPageEdits(content, page, settings, list);
   applyHours(content, settings.hours);
@@ -300,11 +353,64 @@ async function start() {
   }
   addArtwork(content, page, works, assetMap, urlFor, detailsFor);
   main.replaceChildren(content);
-  wireLightbox(detailsFor);
 }
 
-start().catch((error) => {
-  console.error(error);
-  main.textContent = source === 'staff' ? 'The staff preview could not load. Open the staff portal and check your sign-in.'
-    : 'The gallery could not load. Please try again.';
-});
+async function loadRoute(route, scrollTop) {
+  const request = ++nextPageRequest;
+  main.setAttribute('aria-busy', 'true');
+  if (dialog.open) dialog.close();
+  lightboxTrigger = undefined;
+  try {
+    const data = await getData(route);
+    if (request !== nextPageRequest) return;
+    if (dialog.open) dialog.close();
+    lightboxTrigger = undefined;
+    renderPage(route, data);
+  } catch (error) {
+    if (request !== nextPageRequest) return;
+    console.error(error);
+    markCurrentPage(route);
+    main.textContent = source === 'staff' ? 'The staff preview could not load. Open the staff portal and check your sign-in.'
+      : 'The gallery could not load. Please try again.';
+  }
+  main.removeAttribute('aria-busy');
+  if (scrollTop !== undefined) {
+    main.focus({ preventScroll: true });
+    window.scrollTo(0, scrollTop);
+  }
+}
+
+function wireNavigation() {
+  const base = new URL('./', location.href);
+  const scrollPositions = new Map();
+  let address = location.href;
+  let activeRoute = initialRoute;
+  main.tabIndex = -1;
+  history.scrollRestoration = 'manual';
+
+  function navigate(url, push) {
+    const route = url.searchParams.get('page') || 'index.html';
+    if (route === activeRoute) return;
+    scrollPositions.set(address, scrollY);
+    if (push) history.pushState(null, '', url);
+    address = url.href;
+    activeRoute = route;
+    loadRoute(route, push ? 0 : scrollPositions.get(address) || 0);
+  }
+
+  document.addEventListener('click', (event) => {
+    if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+    const link = event.target.closest?.('a[href]');
+    if (!link || link.hasAttribute('target') || link.hasAttribute('download')) return;
+    const url = new URL(link.href);
+    if (url.origin !== base.origin || url.hash ||
+        (url.pathname !== base.pathname && url.pathname !== base.pathname + 'index.html')) return;
+    event.preventDefault();
+    navigate(url, true);
+  });
+  window.addEventListener('popstate', () => navigate(new URL(location.href), false));
+}
+
+wireLightbox();
+if (hosted) wireNavigation();
+loadRoute(initialRoute);

@@ -34,6 +34,7 @@ body:has(main a[data-work], main .new-artwork) :is(.layout, footer) { width: min
 .artists summary { display: none; }
 .artists a { display: block; font: 400 .75rem/1.45 "azo-sans-web", "Avenir Next", Avenir, Arial, sans-serif; text-transform: uppercase; margin-block: .8rem; overflow-wrap: anywhere; }
 .artists img { display: block; width: min(100%, 150px); margin: 0 auto 2.2rem; }
+.artists img:not([src]) { display: none; }
 .content { background: rgb(255 255 255 / .6); min-height: 460px; padding: 1.9rem 35px 2rem; overflow-wrap: anywhere; }
 .content img { height: auto; max-width: 100%; vertical-align: middle; }
 .content p { font-size: .875rem; line-height: 1.48; white-space: pre-line; }

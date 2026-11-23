@@ -14,6 +14,13 @@ export function pageHead({ title, css, script, supabase, hosted = false }) {
 </head>`;
 }
 
+export function adminPage({ title, css, script, supabase, hosted = false }) {
+  return `${pageHead({ title: 'Staff sign-in · ' + title, css, script, supabase, hosted })}
+<body><header class="top"><div class="wrap top-inner">
+<a class="brand" href="${hosted ? './' : './index.html'}">${title}</a></div></header>
+<main id="main" class="wrap admin"><p role="status">Loading staff portal…</p></main></body></html>\n`;
+}
+
 const menu = [
   ['Home', 'index.html'], ['About', 'about.htm'], ['Exhibitions', 'exhibitions.htm'],
   ['Services', 'services.htm'], ['Contact', 'contact.htm']
@@ -34,7 +41,7 @@ export function visitorPage({ title, css, script, supabase, hosted = false }) {
 <aside class="artists"><img alt="${hosted ? '' : title}"><details open><summary>Artists</summary><nav aria-label="Artists"></nav></details></aside>
 <main class="content" id="main"><p role="status">Loading gallery…</p></main>
 </div>
-${hosted ? '' : '<footer><a href="./admin.html">Open staff portal</a></footer>'}
+<footer><a href="./admin.html">${hosted ? 'Staff sign-in' : 'Open staff portal'}</a></footer>
 <dialog class="lightbox" aria-label="Artwork viewer">
 <img alt="" hidden><p data-image-status role="status"></p><p data-caption></p>
 <nav aria-label="Artwork lightbox"><button type="button" data-prev>Previous</button><button type="button" data-next>Next</button>

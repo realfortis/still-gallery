@@ -3,7 +3,7 @@ import { build } from 'esbuild';
 import { copyFile, mkdir, readFile, readdir, writeFile } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { pageHead, visitorPage } from './shell.mjs';
+import { adminPage, visitorPage } from './shell.mjs';
 
 const root = fileURLToPath(new URL('../../', import.meta.url));
 const [mode, manifestArg, outputArg] = process.argv.slice(2);
@@ -59,10 +59,7 @@ if (mode === 'local') {
 const cssRevision = createHash('sha256').update(await readFile(join(root, 'pages/emma/legacy.css'))).digest('hex').slice(0, 12);
 const title = 'Emma Butler Gallery';
 const visitor = visitorPage({ title, css: 'emma.css?v=' + cssRevision, script: 'emma.js', supabase });
-const admin = `${pageHead({ title: 'Staff sign-in · ' + title, css: 'site.css', script: 'emma-admin.js', supabase })}
-<body><header class="top"><div class="wrap top-inner">
-<a class="brand" href="./index.html">Emma Butler Gallery</a></div></header>
-<main id="main" class="wrap admin"><p role="status">Loading staff portal…</p></main></body></html>\n`;
+const admin = adminPage({ title, css: 'site.css', script: 'emma-admin.js', supabase });
 
 const paths = [...legacy, 'entry.html'];
 await Promise.all([

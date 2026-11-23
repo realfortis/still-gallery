@@ -6,7 +6,7 @@ const params = new URLSearchParams(location.search);
 const currentPath = decodeURIComponent(location.pathname.split('/').pop() || 'index.html');
 const hosted = EMMA_MODE === 'hosted';
 const initialRoute = hosted || currentPath === 'entry.html' ? (params.get('page') || 'index.html') : currentPath;
-const source = !hosted && params.has('preview') ? 'staff' : EMMA_MODE === 'local' ? 'local' : 'public';
+const source = params.has('preview') ? 'staff' : EMMA_MODE === 'local' ? 'local' : 'public';
 const legacyPaths = new Set(EMMA_LEGACY_PATHS);
 const masthead = document.querySelector('.masthead');
 const artistNav = document.querySelector('.artists nav');
@@ -22,8 +22,8 @@ let lightboxDetailsFor;
 let lightboxRequest = 0;
 
 function linkTo(page) {
-  if (hosted) return page === 'index.html' ? './' : './?page=' + encodeURIComponent(page);
-  const link = legacyPaths.has(page) ? './' + encodeURIComponent(page) : './entry.html?page=' + encodeURIComponent(page);
+  const link = hosted ? (page === 'index.html' ? './' : './?page=' + encodeURIComponent(page))
+    : legacyPaths.has(page) ? './' + encodeURIComponent(page) : './entry.html?page=' + encodeURIComponent(page);
   return source === 'staff' ? link + (link.includes('?') ? '&' : '?') + 'preview' : link;
 }
 
@@ -403,7 +403,7 @@ function wireNavigation() {
     const link = event.target.closest?.('a[href]');
     if (!link || link.hasAttribute('target') || link.hasAttribute('download')) return;
     const url = new URL(link.href);
-    if (url.origin !== base.origin || url.hash ||
+    if (url.origin !== base.origin || url.hash || url.searchParams.has('preview') !== (source === 'staff') ||
         (url.pathname !== base.pathname && url.pathname !== base.pathname + 'index.html')) return;
     event.preventDefault();
     navigate(url, true);

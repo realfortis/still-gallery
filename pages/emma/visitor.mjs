@@ -77,7 +77,8 @@ function applyPageEdits(fragment, page, settings, list) {
     heading.textContent = page.title;
     const paragraph = document.createElement('p');
     paragraph.textContent = page.body_text;
-    fragment.prepend(heading, paragraph);
+    if (page.body_text) fragment.prepend(heading, paragraph);
+    else fragment.prepend(heading);
     if (page.route === 'contact.htm') {
       const hours = document.createElement('p');
       hours.textContent = settings.hours;
@@ -95,7 +96,7 @@ function applyPageEdits(fragment, page, settings, list) {
       if (!listed) continue;
       const title = document.createElement('h2');
       const link = document.createElement('a');
-      link.href = linkTo(feature);
+      link.href = './' + encodeURIComponent(feature);
       link.textContent = listed.title;
       title.append(link);
       fragment.append(title);
@@ -109,14 +110,38 @@ function applyPageEdits(fragment, page, settings, list) {
 }
 
 function enhanceLinks(fragment) {
+  const linked = new Set();
   for (const anchor of fragment.querySelectorAll('a[href]')) {
     const href = anchor.getAttribute('href');
     if (href.startsWith('./') && /\.html?$/i.test(href)) {
-      anchor.href = linkTo(decodeURIComponent(href.slice(2)));
+      const route = decodeURIComponent(href.slice(2));
+      linked.add(route);
+      anchor.href = linkTo(route);
     } else if (!['#', 'mailto:', 'tel:'].some((prefix) => href.startsWith(prefix))) {
       anchor.removeAttribute('href');
     }
   }
+  return linked;
+}
+
+function addExhibitionLinks(fragment, list, linked) {
+  const exhibitions = list.filter(({ kind, route }) => kind === 'exhibition' && !linked.has(route))
+    .sort((a, b) => a.title.localeCompare(b.title));
+  if (!exhibitions.length) return;
+  const section = document.createElement('section');
+  const heading = document.createElement('h2');
+  heading.textContent = linked.size ? 'More exhibitions' : 'Exhibitions';
+  const items = document.createElement('ul');
+  for (const { title, route } of exhibitions) {
+    const item = document.createElement('li');
+    const link = document.createElement('a');
+    link.href = linkTo(route);
+    link.textContent = title;
+    item.append(link);
+    items.append(item);
+  }
+  section.append(heading, items);
+  fragment.prepend(section);
 }
 
 function displayCaption(work, item) {
@@ -348,7 +373,8 @@ function renderPage(route, { page, settings, list }) {
   const content = safeContent(page.body);
   applyPageEdits(content, page, settings, list);
   applyHours(content, settings.hours);
-  enhanceLinks(content);
+  const linked = enhanceLinks(content);
+  if (page.route === 'exhibitions.htm') addExhibitionLinks(content, list, linked);
   main.replaceChildren(content);
 }
 

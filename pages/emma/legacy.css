@@ -37,6 +37,7 @@ body:has(main a[data-work], main .new-artwork) :is(.layout, footer) { width: min
 .artists img:not([src]) { display: none; }
 .content { background: rgb(255 255 255 / .6); min-height: 460px; padding: 1.9rem 35px 2rem; overflow-wrap: anywhere; }
 .content img { height: auto; max-width: 100%; vertical-align: middle; }
+.exhibition-poster { margin: 1.25rem auto; max-width: 32rem; text-align: center; }
 .content p { font-size: .875rem; line-height: 1.48; white-space: pre-line; }
 .content h1, .content h2, .content h3 { color: #515151; text-transform: uppercase; letter-spacing: .15em; font-family: "trajan-sans-pro", Marcellus, Optima, serif; font-weight: 400; }
 .content h1 { font-size: 2rem; margin-top: 0; margin-bottom: 1rem; }
